@@ -9,16 +9,16 @@
 
 #include <time.h>
 
-#define width 80
-#define height 8
-//#define tail 21
-#define tail 50
-#define pixels (width * height)
-#define bytes (pixels * 3)
+#define WIDTH 80
+#define HEIGHT 8
+//#define TAIL 21
+#define TAIL 50
+#define PIXELS (WIDTH * HEIGHT)
+#define BYTES (PIXELS * 3)
 
 // maximum *average* brightness of input
-#define max_bright 0xff
-#define max_bright_total (bytes * max_bright)
+#define MAX_BRIGHT 0xff
+#define MAX_BRIGHT_TOTAL (BYTES * MAX_BRIGHT)
 
 
 //#define brightness 0.5
@@ -38,10 +38,10 @@ static const char cielab[256] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
 202, 204, 206, 208, 211, 213, 215, 218, 220, 222, 225, 227, 230, 232, 234, 237,
 239, 242, 244, 247, 249, 252, 255 };
 
-static char out[bytes + tail];
+static char out[BYTES + TAIL];
 
 int main (void) {
-    char in[bytes];
+    char in[BYTES];
     int i, c;
 
     long sum;
@@ -54,19 +54,19 @@ int main (void) {
 
     write(spi, "\0\0\0\0\0\0\0\0\0\0", 10);
 
-    while ((c = read(0, in, bytes))) {
+    while ((c = read(0, in, BYTES))) {
         sum = 0;
-        for (i = 0; i < bytes; i++)
+        for (i = 0; i < BYTES; i++)
             sum += in[i];
 
-        if (sum > max_bright_total)
-            for (i = 0; i < bytes; i++)
-                in[i] = in[i] / max_bright * (sum / bytes);
+        if (sum > MAX_BRIGHT_TOTAL)
+            for (i = 0; i < BYTES; i++)
+                in[i] = in[i] / MAX_BRIGHT * (sum / BYTES);
 
         for (i = 0; i < (c/3); i++) {
-            int xx = (i % width);
-            int yy = (i - xx) / width;
-            int j = (yy % 2) ? (yy * width + width - xx - 1) : i;
+            int xx = (i % WIDTH);
+            int yy = (i - xx) / WIDTH;
+            int j = (yy % 2) ? (yy * WIDTH + WIDTH - xx - 1) : i;
 #ifdef brightness
 	    in[i * 3 + 0] *= brightness;
 	    in[i * 3 + 1] *= brightness;
