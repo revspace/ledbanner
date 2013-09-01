@@ -23,7 +23,7 @@
 
 //#define brightness 0.5
 
-char cielab[256] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+static const char cielab[256] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6,
 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12,
 12, 13, 13, 13, 14, 14, 14, 15, 15, 16, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20,
@@ -38,34 +38,11 @@ char cielab[256] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 202, 204, 206, 208, 211, 213, 215, 218, 220, 222, 225, 227, 230, 232, 234, 237,
 239, 242, 244, 247, 249, 252, 255 };
 
-char out[bytes + tail];
-
-int pixelchase (spi) {
-    int i = 0;
-    for (i; i < pixels; i++) {
-        int pos = 0;
-        for (; pos < i; pos++) {
-            out[pos * 3 + 0] = 0x80;
-            out[pos * 3 + 1] = 0x80;
-            out[pos * 3 + 2] = 0x80;
-        }
-        out[pos * 3 + 0] = 0xff;
-        out[pos * 3 + 1] = 0xff;
-        out[pos * 3 + 2] = 0xff;
-        for (pos++; pos < pixels; pos++) {
-            out[pos * 3 + 0] = 0x80;
-            out[pos * 3 + 1] = 0x80;
-            out[pos * 3 + 2] = 0x80;
-        }
-        write(spi, out, sizeof(out));
-    }
-}
+static char out[bytes + tail];
 
 int main (void) {
-    char r[pixels], g[pixels], b[pixels];
     char in[bytes];
-    char triplet[3];
-    int i, k, c;
+    int i, c;
 
     long sum;
 
@@ -75,11 +52,9 @@ int main (void) {
     int hz = 4000000;
     ioctl(spi, SPI_IOC_WR_MAX_SPEED_HZ, &hz);
 
-    // pixelchase(spi); return 0;
-    
     write(spi, "\0\0\0\0\0\0\0\0\0\0", 10);
 
-    while (c = read(0, in, bytes)) {
+    while ((c = read(0, in, bytes))) {
         sum = 0;
         for (i = 0; i < bytes; i++)
             sum += in[i];
@@ -91,7 +66,7 @@ int main (void) {
         for (i = 0; i < (c/3); i++) {
             int xx = (i % width);
             int yy = (i - xx) / width;
-            int j = yy % 2 ? (yy * width + width - xx - 1) : i;
+            int j = (yy % 2) ? (yy * width + width - xx - 1) : i;
 #ifdef brightness
 	    in[i * 3 + 0] *= brightness;
 	    in[i * 3 + 1] *= brightness;
@@ -104,7 +79,8 @@ int main (void) {
             out[j * 3 + 0] = (cielab[in[i * 3 + 1]] >> 1) | 0x80;
             out[j * 3 + 2] = (cielab[in[i * 3 + 2]] >> 1) | 0x80;
         }
-	write(spi, out, sizeof(out));
+	    write(spi, out, sizeof(out));
     }
+    close(spi);
     return 0;
 }
