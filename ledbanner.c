@@ -8,6 +8,8 @@
 #include <fcntl.h>
 
 #include <time.h>
+#include <math.h>
+#include <stdint.h>
 
 #define WIDTH 80
 #define HEIGHT 8
@@ -15,6 +17,11 @@
 #define TAIL 50
 #define PIXELS (WIDTH * HEIGHT)
 #define BYTES (PIXELS * 3)
+
+// raw RGB values for a theoretical pure white pixel
+#define WHITE_R 255
+#define WHITE_G 210
+#define WHITE_B 200
 
 // maximum *average* brightness of input
 #define MAX_BRIGHT 0xff
@@ -38,13 +45,42 @@ static const char cielab[256] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
 202, 204, 206, 208, 211, 213, 215, 218, 220, 222, 225, 227, 230, 232, 234, 237,
 239, 242, 244, 247, 249, 252, 255 };
 
+static uint8_t rgb_table[256][3];
+
 static char out[BYTES + TAIL];
+
+// see http://en.wikipedia.org/wiki/SRGB
+static double rgbs(double x)
+{
+    if (x <= 0.04045) {
+        return x / 12.92;
+    } else {
+        return pow((x + 0.055) / (1 + 0.055), 2.4);
+    }
+}
+
+static void create_table(uint8_t table[][3], uint8_t white[3])
+{
+    int i, j;
+
+    for (i = 0; i < 256; i++) {
+        double t = i / 255.0;
+        for (j = 0; j < 3; j++) {
+            table[i][j] = round(rgbs(t) * white[j]);
+        }
+    }    
+}
+
 
 int main (void) {
     char in[BYTES];
     int i, c;
+    uint8_t r,g,b;
 
     long sum;
+
+    uint8_t white[] = {WHITE_R, WHITE_G, WHITE_B};
+    create_table(rgb_table, white);
 
     int spi = open("/dev/spidev0.0", O_WRONLY);
 
@@ -72,12 +108,22 @@ int main (void) {
 	    in[i * 3 + 1] *= brightness;
 	    in[i * 3 + 2] *= brightness;
 #endif
+#if 0
             in[i * 3 + 1] *= .9;
             in[i * 3 + 1] *= .95;
-
+#endif
+            r = in[i * 3 + 0];
+            g = in[i * 3 + 1];
+            b = in[i * 3 + 2];
+#if 0
             out[j * 3 + 1] = (cielab[in[i * 3 + 0]] >> 1) | 0x80;
             out[j * 3 + 0] = (cielab[in[i * 3 + 1]] >> 1) | 0x80;
             out[j * 3 + 2] = (cielab[in[i * 3 + 2]] >> 1) | 0x80;
+#else
+            out[j * 3 + 1] = (rgb_table[r][0] >> 1) | 0x80;
+            out[j * 3 + 0] = (rgb_table[g][1] >> 1) | 0x80;
+            out[j * 3 + 2] = (rgb_table[b][2] >> 1) | 0x80;
+#endif
         }
 	    write(spi, out, sizeof(out));
     }
