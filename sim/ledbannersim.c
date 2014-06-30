@@ -1,8 +1,9 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdint.h>
+#include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "SDL.h"
 #include "SDL_video.h"
 
@@ -33,8 +34,20 @@ int main(int argc, char *argv[])
         SDL_CreateRGBSurfaceFrom(frame, WIDTH, HEIGHT, DEPTH, WIDTH*3, 0x0000FF, 0x00FF00, 0xFF0000, 0);
 
     // main loop
-    int c;
-    while ((c = read(0, frame, BYTES))) {
+    for(;;) {
+        int c = read(0, frame, BYTES);
+        
+        if (c == -1) {
+            if (errno == EINTR)
+                continue;
+                
+            fprintf(stderr, "fail: %s\n", strerror(errno));
+            
+            break;
+        }
+        
+        if (c == 0) // pipe closed
+            break;
 
         SDL_BlitScaled(frame_surface, NULL, surface, NULL);
         SDL_UpdateWindowSurface(window);
