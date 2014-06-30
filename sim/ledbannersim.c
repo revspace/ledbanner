@@ -35,18 +35,29 @@ int main(int argc, char *argv[])
 
     // main loop
     for(;;) {
-        int c = read(0, frame, BYTES);
+        uint8_t p = frame;
+        int n = BYTES;
         
-        if (c == -1) {
-            if (errno == EINTR)
-                continue;
-                
-            fprintf(stderr, "fail: %s\n", strerror(errno));
+        while(n > 0) {
+            int c = read(0, p, n);
             
-            break;
+            if (c == -1) {
+                if (errno == EINTR)
+                    continue;
+                    
+                fprintf(stderr, "fail: %s\n", strerror(errno));
+                
+                break;
+            }
+            
+            if (c == 0) // pipe closed
+                break;
+                
+            p += c;
+            n -= c;
         }
         
-        if (c == 0) // pipe closed
+        if (n)
             break;
 
         SDL_BlitScaled(frame_surface, NULL, surface, NULL);
